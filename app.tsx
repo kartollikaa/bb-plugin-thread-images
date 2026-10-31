@@ -28,16 +28,19 @@ function useThreadImages(threadId: string): ThreadImages | undefined {
 }
 
 function Thumbnail({ image, className, onOpen }: { image: ReadImage; className: string; onOpen(): void }) {
-  if (image.url === null) {
+  // The URL that failed to load: the file was moved or deleted after the read.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  if (image.url === null || image.url === brokenUrl) {
     return (
       <div
-        title={image.path}
-        className={`${className} flex items-center justify-center rounded-md border border-dashed border-border p-1 text-center text-xs text-muted-foreground`}
+        title={`${image.path}\nThe file is no longer there.`}
+        className={`${className} flex items-center justify-center overflow-hidden break-all rounded-md border border-dashed border-border p-1 text-center text-[10px] leading-tight text-muted-foreground`}
       >
         {image.name}
       </div>
     );
   }
+  const url = image.url;
   return (
     <button
       type="button"
@@ -46,7 +49,7 @@ function Thumbnail({ image, className, onOpen }: { image: ReadImage; className: 
       onClick={onOpen}
       className={`${className} overflow-hidden rounded-md border border-border bg-muted transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring`}
     >
-      <img src={image.url} alt={image.name} loading="lazy" className="h-full w-full object-contain" />
+      <img src={url} alt={image.name} loading="lazy" onError={() => setBrokenUrl(url)} className="h-full w-full object-contain" />
     </button>
   );
 }
