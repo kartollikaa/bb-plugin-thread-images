@@ -38,12 +38,12 @@ export function imagesAbove(data: ThreadImages, message: MessageRef): ReadImage[
   );
 }
 
-/** Every image the thread read, oldest first, each file once at its latest read. */
+/** Every image the thread read, newest first, each file once at its latest read. */
 export function threadGallery(data: ThreadImages): ReadImage[] {
   const latest = new Map<string, ReadImage>();
   for (const image of data.images) {
     const seen = latest.get(image.path);
     if (seen === undefined || image.readAt >= seen.readAt) latest.set(image.path, image);
   }
-  return [...latest.values()].sort((a, b) => a.readAt - b.readAt);
+  return [...latest.values()].sort((a, b) => b.readAt - a.readAt);
 }

@@ -40,7 +40,7 @@ test("a message the scan does not know matches the message of its turn that bega
   assert.deepEqual(above("unknown", "t9", 205), []);
 });
 
-test("the gallery lists every file once at its latest read, oldest first", () => {
+test("the gallery lists every file once at its latest read, newest first", () => {
   const reread: ThreadImages = { ...data, images: [...data.images, image("b2", 600, "t2", "/shots/b.png")] };
-  assert.deepEqual(keys(threadGallery(reread)), ["a", "c", "d", "e", "b2"]);
+  assert.deepEqual(keys(threadGallery(reread)), ["b2", "e", "d", "c", "a"]);
 });
