@@ -1,9 +1,11 @@
-// Read Images: the images an agent read, above the message that follows the read and in the thread context card.
+// Thread Images: the images an agent read, above the message that follows the read and in the thread context card.
 import { useEffect, useState } from "react";
 import {
   definePluginApp,
+  experimental_Icon as Icon,
   experimental_ImageLightbox as ImageLightbox,
-  experimental_THREAD_INFO_SECTION_GROUPS as SECTION_GROUPS,
+  experimental_THREAD_INFO_ROW_GROUPS as ROW_GROUPS,
+  experimental_ThreadContextCardRow as ThreadContextCardRow,
   experimental_useRpcQuery as useRpcQuery,
   type ExperimentalMessageMetadataProps,
   type ExperimentalThreadContextCardProps,
@@ -86,28 +88,64 @@ function ImagesAboveMessage({ message }: ExperimentalMessageMetadataProps) {
   );
 }
 
-function ImagesSection({ threadId }: ExperimentalThreadContextCardProps) {
+const COLLAPSED_KEY = "thread-images.collapsed";
+
+function useCollapsed(): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "true");
+  const toggle = () =>
+    setCollapsed((current) => {
+      localStorage.setItem(COLLAPSED_KEY, String(!current));
+      return !current;
+    });
+  return [collapsed, toggle];
+}
+
+// bb's icon set has no picture glyph; this one follows its 24px, 1.5-stroke style.
+function PictureIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground max-md:pointer-coarse:size-4">
+      <rect x="3" y="4" width="18" height="16" rx="3.5" />
+      <circle cx="8.5" cy="9.5" r="1.5" />
+      <path d="M3.5 17.5 9 12.5l4 3.5 3-2.5 4.5 3.5" />
+    </svg>
+  );
+}
+
+function ImagesRow({ threadId }: ExperimentalThreadContextCardProps) {
   const data = useThreadImages(threadId);
+  const [collapsed, toggle] = useCollapsed();
   const [open, setOpen] = useState<number | null>(null);
   if (data === undefined) return null;
   const images = threadGallery(data);
   if (images.length === 0) return null;
   return (
-    <div className="grid grid-cols-3 gap-1.5 px-1 py-1">
-      {images.map((image, index) => (
-        <Thumbnail key={image.key} image={image} className="aspect-square w-full" onOpen={() => setOpen(index)} />
-      ))}
+    <div>
+      <ThreadContextCardRow
+        leading={<PictureIcon />}
+        label="Images"
+        title={collapsed ? "Show images" : "Hide images"}
+        trailing={
+          <span className="flex items-center gap-1 tabular-nums">
+            {images.length}
+            <Icon name={collapsed ? "ChevronRight" : "ChevronDown"} className="size-3.5" />
+          </span>
+        }
+        onClick={toggle}
+      />
+      {collapsed ? null : (
+        <div className="grid grid-cols-3 gap-1.5 px-2 pb-2 pt-1">
+          {images.map((image, index) => (
+            <Thumbnail key={image.key} image={image} className="aspect-square w-full" onOpen={() => setOpen(index)} />
+          ))}
+        </div>
+      )}
       <Lightbox images={images} index={open} onIndex={setOpen} />
     </div>
   );
 }
 
 export default definePluginApp((app) => {
-  app.slots.experimental_messageMetadata({ id: "read-images", placement: "above", component: ImagesAboveMessage });
-  app.slots.experimental_threadContextCardSection({
-    id: "read-images",
-    title: "Images",
-    group: SECTION_GROUPS.storage,
-    component: ImagesSection,
-  });
+  app.slots.experimental_messageMetadata({ id: "thread-images", placement: "above", component: ImagesAboveMessage });
+  // In the git group after its changes row, so the images sit right under Changes.
+  app.slots.experimental_threadContextCardRow({ id: "thread-images", group: ROW_GROUPS.git, order: 1000, component: ImagesRow });
 });

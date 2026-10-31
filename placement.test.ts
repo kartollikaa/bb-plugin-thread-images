@@ -26,6 +26,10 @@ test("an image sits above the first message of its turn that began after the rea
   assert.deepEqual(above("n1", "t2"), ["e"]);
 });
 
+test("a timeline message is found by the item id at the end of its key", () => {
+  assert.deepEqual(above("thr_x:assistant:kind:assistant|turn:t1|parent:root|item:m2", "t1", 999), ["b", "c"]);
+});
+
 test("the turn's last message also takes the images read after it", () => {
   assert.deepEqual(above("m3"), ["d"]);
 });
@@ -36,7 +40,7 @@ test("a message the scan does not know matches the message of its turn that bega
   assert.deepEqual(above("unknown", "t9", 205), []);
 });
 
-test("the gallery lists every file once at its latest read, newest first", () => {
+test("the gallery lists every file once at its latest read, oldest first", () => {
   const reread: ThreadImages = { ...data, images: [...data.images, image("b2", 600, "t2", "/shots/b.png")] };
-  assert.deepEqual(keys(threadGallery(reread)), ["b2", "e", "d", "c", "a"]);
+  assert.deepEqual(keys(threadGallery(reread)), ["a", "c", "d", "e", "b2"]);
 });

@@ -1,9 +1,10 @@
-// Read Images: finds the images an agent opened with its file-read tool and serves them to the app.
+// Thread Images: finds the images an agent opened with its file-read tool and serves them to the app.
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { rpcContract, threadTag, type AgentMessage, type ReadImage } from "./contract";
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp"]);
-const PAGE = 500;
+// The most events bb returns in one page.
+const PAGE = 100;
 const PREVIEW_TTL_MS = 60 * 60 * 1000;
 const PREVIEW_RENEW_MS = 5 * 60 * 1000;
 
@@ -12,6 +13,8 @@ interface Scan {
   reads: Omit<ReadImage, "url">[];
   messages: AgentMessage[];
 }
+
+const emptyScan = (): Scan => ({ lastSeq: 0, reads: [], messages: [] });
 
 interface Preview {
   baseUrl: string;
@@ -44,14 +47,14 @@ export default async function plugin(bb: BbPluginApi) {
   const previews = new Map<string, Preview>();
   const scanning = new Map<string, Promise<boolean>>();
 
-  /** Reads the thread's events since the last scan; true when it found a new image read. */
+  /** Reads the thread's events since the last scan; true when what the app shows changed. */
   async function scanThread(threadId: string): Promise<boolean> {
     const running = scanning.get(threadId);
     if (running) return running;
     const work = (async () => {
-      const scan = scans.get(threadId) ?? { lastSeq: 0, reads: [], messages: [] };
+      const scan = scans.get(threadId) ?? emptyScan();
       scans.set(threadId, scan);
-      let found = false;
+      let changed = false;
       for (;;) {
         const rows = await bb.sdk.threads.events.list({
           threadId,
@@ -66,6 +69,8 @@ export default async function plugin(bb: BbPluginApi) {
           if (item === null || typeof item.id !== "string") continue;
           if (row.type === "item/started" && item.type === "agentMessage") {
             scan.messages.push({ id: item.id, turnId: turnOf(row), startedAt: Number(row.createdAt) });
+            // A new message takes the images read since the one before it, so they move above it.
+            if (scan.reads.length > 0) changed = true;
           } else if (
             row.type === "item/completed" &&
             item.type === "fileRead" &&
@@ -81,10 +86,10 @@ export default async function plugin(bb: BbPluginApi) {
               turnId: turnOf(row),
               readAt: Number(row.createdAt),
             });
-            found = true;
+            changed = true;
           }
         }
-        if (rows.length < PAGE) return found;
+        if (rows.length < PAGE) return changed;
       }
     })();
     scanning.set(threadId, work);
@@ -112,7 +117,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.rpc.register(rpcContract, {
     thread_images: async ({ threadId }) => {
       await scanThread(threadId);
-      const scan = scans.get(threadId) ?? { lastSeq: 0, reads: [], messages: [] };
+      const scan = scans.get(threadId) ?? emptyScan();
       let expiresAtMs: number | null = null;
       const images: ReadImage[] = [];
       for (const read of scan.reads) {

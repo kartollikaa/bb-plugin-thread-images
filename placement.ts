@@ -8,7 +8,9 @@ export interface MessageRef {
 
 /** The scanned message a timeline message is: the same id, else the one of its turn that started nearest it. */
 function scannedMessage(messages: readonly AgentMessage[], message: MessageRef): AgentMessage | null {
-  const same = messages.find((candidate) => candidate.id === message.id);
+  // The timeline keys a message as `…|item:<item id>`; the events carry the bare item id.
+  const itemId = /\|item:([^|]+)$/.exec(message.id)?.[1] ?? message.id;
+  const same = messages.find((candidate) => candidate.id === itemId);
   if (same) return same;
   const ofTurn = messages.filter((candidate) => candidate.turnId === message.turnId);
   if (message.turnId === null || ofTurn.length === 0) return null;
@@ -36,12 +38,12 @@ export function imagesAbove(data: ThreadImages, message: MessageRef): ReadImage[
   );
 }
 
-/** Every image the thread read, newest first, each file once at its latest read. */
+/** Every image the thread read, oldest first, each file once at its latest read. */
 export function threadGallery(data: ThreadImages): ReadImage[] {
   const latest = new Map<string, ReadImage>();
   for (const image of data.images) {
     const seen = latest.get(image.path);
     if (seen === undefined || image.readAt >= seen.readAt) latest.set(image.path, image);
   }
-  return [...latest.values()].sort((a, b) => b.readAt - a.readAt);
+  return [...latest.values()].sort((a, b) => a.readAt - b.readAt);
 }
