@@ -7,8 +7,7 @@ const imageSchema = z.object({
   key: z.string(),
   path: z.string(),
   name: z.string(),
-  /** Null when the file's folder cannot be served (missing, or not on this machine). */
-  url: z.string().nullable(),
+  url: z.string(),
   turnId: z.string().nullable(),
   readAt: z.number(),
 });

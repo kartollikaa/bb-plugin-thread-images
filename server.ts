@@ -1,4 +1,5 @@
 // Thread Images: finds the images an agent opened with its file-read tool and serves them to the app.
+import { access } from "node:fs/promises";
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { rpcContract, threadTag, type AgentMessage, type ReadImage } from "./contract";
 
@@ -24,6 +25,16 @@ interface Preview {
 function isImagePath(path: string): boolean {
   const dot = path.lastIndexOf(".");
   return dot > path.lastIndexOf("/") && IMAGE_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
+}
+
+/** False only when the file is gone; any other failure leaves the image to the browser to load. */
+async function stillThere(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch (cause) {
+    return (cause as { code?: unknown }).code !== "ENOENT";
+  }
 }
 
 function splitPath(path: string): { dir: string; name: string } {
@@ -121,13 +132,13 @@ export default async function plugin(bb: BbPluginApi) {
       let expiresAtMs: number | null = null;
       const images: ReadImage[] = [];
       for (const read of scan.reads) {
+        if (!(await stillThere(read.path))) continue;
         const { dir, name } = splitPath(read.path);
         const preview = await previewOf(dir);
-        if (preview) expiresAtMs = Math.min(expiresAtMs ?? Infinity, preview.expiresAtMs);
+        if (preview === null) continue;
+        expiresAtMs = Math.min(expiresAtMs ?? Infinity, preview.expiresAtMs);
         // The read's key busts the browser cache: a file read again may have changed in between.
-        const url = preview
-          ? `${preview.baseUrl.replace(/\/$/, "")}/${encodeURIComponent(name)}?read=${encodeURIComponent(read.key)}`
-          : null;
+        const url = `${preview.baseUrl.replace(/\/$/, "")}/${encodeURIComponent(name)}?read=${encodeURIComponent(read.key)}`;
         images.push({ ...read, url });
       }
       return { images, messages: scan.messages, expiresAtMs };

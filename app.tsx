@@ -28,18 +28,9 @@ function useThreadImages(threadId: string): ThreadImages | undefined {
 }
 
 function Thumbnail({ image, className, onOpen }: { image: ReadImage; className: string; onOpen(): void }) {
-  // The URL that failed to load: the file was moved or deleted after the read.
+  // The URL that failed to load: the file went away after the server last looked.
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
-  if (image.url === null || image.url === brokenUrl) {
-    return (
-      <div
-        title={`${image.path}\nThe file is no longer there.`}
-        className={`${className} flex items-center justify-center overflow-hidden break-all rounded-md border border-dashed border-border p-1 text-center text-[10px] leading-tight text-muted-foreground`}
-      >
-        {image.name}
-      </div>
-    );
-  }
+  if (image.url === brokenUrl) return null;
   const url = image.url;
   return (
     <button
