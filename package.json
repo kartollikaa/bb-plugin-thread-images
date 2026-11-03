@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-thread-images",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Shows the images an agent opens in a bb thread.",
   "license": "MIT",
   "repository": {
