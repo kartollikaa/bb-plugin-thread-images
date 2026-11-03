@@ -1,4 +1,4 @@
-// Thread Images: finds the images an agent opened with its file-read tool and serves them to the app.
+// Thread Images: finds the images an agent opened, whatever its provider, and serves them to the app.
 import { access } from "node:fs/promises";
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { rpcContract, threadTag, type AgentMessage, type ReadImage } from "./contract";
