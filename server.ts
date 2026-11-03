@@ -2,8 +2,8 @@
 import { access } from "node:fs/promises";
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { rpcContract, threadTag, type AgentMessage, type ReadImage } from "./contract";
+import { imageReadOf } from "./image-reads";
 
-const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp"]);
 // The most events bb returns in one page.
 const PAGE = 100;
 const PREVIEW_TTL_MS = 60 * 60 * 1000;
@@ -20,11 +20,6 @@ const emptyScan = (): Scan => ({ lastSeq: 0, reads: [], messages: [] });
 interface Preview {
   baseUrl: string;
   expiresAtMs: number;
-}
-
-function isImagePath(path: string): boolean {
-  const dot = path.lastIndexOf(".");
-  return dot > path.lastIndexOf("/") && IMAGE_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
 }
 
 /** False only when the file is gone; any other failure leaves the image to the browser to load. */
@@ -82,18 +77,14 @@ export default async function plugin(bb: BbPluginApi) {
             scan.messages.push({ id: item.id, turnId: turnOf(row), startedAt: Number(row.createdAt) });
             // A new message takes the images read since the one before it, so they move above it.
             if (scan.reads.length > 0) changed = true;
-          } else if (
-            row.type === "item/completed" &&
-            item.type === "fileRead" &&
-            item.status === "completed" &&
-            typeof item.path === "string" &&
-            isImagePath(item.path) &&
-            !scan.reads.some((read) => read.key === item.id)
-          ) {
+            continue;
+          }
+          const read = row.type === "item/completed" ? imageReadOf(item) : null;
+          if (read !== null && !scan.reads.some((known) => known.key === read.id)) {
             scan.reads.push({
-              key: item.id,
-              path: item.path,
-              name: splitPath(item.path).name,
+              key: read.id,
+              path: read.path,
+              name: splitPath(read.path).name,
               turnId: turnOf(row),
               readAt: Number(row.createdAt),
             });

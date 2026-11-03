@@ -9,7 +9,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --experimental-strip-types --test placement.test.ts",
+    "test": "node --experimental-strip-types --test placement.test.ts image-reads.test.ts",
     "typecheck": "tsc -p ."
   },
   "engines": {
