@@ -1,5 +1,6 @@
 // The one RPC the app reads, shared by server.ts and app.tsx.
-import { defineRpcContract } from "@get-bb/plugin-sdk";
+// Type-only: the SDK root is server-side and does not resolve in the app bundle.
+import type { PluginRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 
 const imageSchema = z.object({
@@ -24,7 +25,7 @@ export function threadTag(threadId: string): string {
   return `thread:${threadId}`;
 }
 
-export const rpcContract = defineRpcContract({
+export const rpcContract = {
   thread_images: {
     input: z.object({ threadId: z.string().min(1) }),
     tags: ({ threadId }) => [threadTag(threadId)],
@@ -35,5 +36,5 @@ export const rpcContract = defineRpcContract({
       expiresAtMs: z.number().nullable(),
     }),
   },
-});
+} satisfies PluginRpcContract;
 export type ThreadImages = z.infer<typeof rpcContract.thread_images.output>;
